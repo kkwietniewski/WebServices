@@ -1,14 +1,16 @@
-const express = require('express');
-const helmet = require('helmet');
-const bodyParser = require('body-parser');
-const app = express();
-const port = 3000;
-
+import express from "express";
+import helmet from "helmet";
+import bodyParser from "body-parser";
+import path from "path";
+import { type } from "os";
 const yup = require('yup');
 const formidable = require('formidable');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const { decode } = require('querystring');
+const app = express();
+const port = 3000;
+
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
@@ -51,7 +53,7 @@ app.use(bodyParser.urlencoded({extended:false}));
 
 app.use(bodyParser.json());
 
-let userData = [];
+let userData:Array<object> = [];
 app.post('/store', (req,res)=>{
   userData.push(req.body.input);
   res.json({'Stored data':userData});
@@ -60,14 +62,11 @@ app.post('/store', (req,res)=>{
 
 app.post('/parse', (req,res)=>{
   const form = formidable({multiples: true});
-  form.parse(req, (err, fields, files)=>{
-    // res.json({fields, files});
+  form.parse(req, (err:Error, field:any, files:any)=>{
     let path = files.toParse.path;
-    // console.log(path);
-
-    fs.readFile(path, 'utf8', (err, data)=>{
+    console.log(typeof(files))
+    fs.readFile(path, 'utf8', (err:Error, data:String)=>{
       data.trim();
-      // res.json(data);
       let keyVal = '';
       let keyValTab = [];
       let isValue = true;
@@ -95,16 +94,16 @@ app.post('/parse', (req,res)=>{
           isValue = true;
         }
         // console.log(keyVal);
-        let tmpChar = parseInt(data[i+1]);
-        tmpChar = tmpChar.toString();
-        if(data[i] == ":" && tmpChar == 'NaN'){ 
+        let tmpVal = parseInt(data[i+1]);
+        let tmpChar = tmpVal.toString();
+        if(data[i] == ":" && tmpChar == "NaN"){ 
           keyVal += '{"';
           isBracket = true;
         }
         // console.log(keyVal);
       }
       
-      console.log(keyValTab);
+    //   console.log(keyValTab);
       res.json(JSON.parse(`{${keyValTab}}`));
       res.status(200);
     });
@@ -128,14 +127,14 @@ app.get('/login', (req,res)=>{
 app.get('/profile', (req,res) =>{
   //Token : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InRlc3QifQ.nxl8hJZzl6cYUXx_3G38_q3ZHxxLPGlZ3sIPDpJxSO0, secret
 
-  let token = req.headers.authorization;
+  let token = String(req.headers.authorization);
   token = token.replace('Bearer ', '');
   let decoded = jwt.decode(token);
   let correctJson = {"login":"test"};
 
    if(JSON.stringify(decoded) == JSON.stringify(correctJson)){
-    res.json(correctJson);
+    res.json(decoded);
    }else{
-     res.send(401);
+     res.sendStatus(401);
    }
 });
