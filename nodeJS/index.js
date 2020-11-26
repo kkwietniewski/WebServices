@@ -9,6 +9,9 @@ const formidable = require('formidable');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const { decode } = require('querystring');
+const cors = require('cors');
+
+app.use(cors());
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
@@ -16,13 +19,13 @@ app.get('/', (req, res) => {
 
 app.get('/info', (req,res) =>{
   let author = require('./package.json');
-  res.json({'author':author.author});
   res.status(200);
+  res.json({'author':author.author});
 });
 
 app.get('/hello/:name', (req,res) =>{
   let name = req.params.name;
-  let schema = yup.string().max(10).matches(/^[a-zA-Z]+$/)
+  let schema = yup.string().max(10).matches(/^[a-zA-Z]+\s*$/)
 
   if(schema.isValidSync(name)){
     res.status(200);
@@ -51,76 +54,39 @@ app.use(bodyParser.urlencoded({extended:false}));
 
 app.use(bodyParser.json());
 
-let userData = [];
+const userData = [];
 app.post('/store', (req,res)=>{
   userData.push(req.body.input);
-  res.json({'Stored data':userData});
   res.status(201);
+  res.json({'Stored data':userData});
 });
 
 app.post('/parse', (req,res)=>{
   const form = formidable({multiples: true});
-  form.parse(req, (err, fields, files)=>{
-    // res.json({fields, files});
-    let path = files.toParse.path;
-    // console.log(path);
+    form.parse(req, (err, fields, files)=>{
+      let path = files.toParse.path;
+      fs.readFile(path, 'utf8', (err, data)=>{
+        data.trim();
 
-    fs.readFile(path, 'utf8', (err, data)=>{
-      data.trim();
-      // res.json(data);
-      let keyVal = '';
-      let keyValTab = [];
-      let isValue = true;
-      let isBracket = false;
-
-      for(let i = 0; i<data.length; i++){
-        if(isValue == true&&data[i] != ';'){
-          if(data[i+1] == ':'){
-            keyVal += data[i]+'"';
-          }else{
-            keyVal += data[i];
-          }
-        }
-        if(data[i] == ','){
-          keyVal += '"';
-        }
-        if(data[i] == ";" && isBracket == true || data[i] == data[data.length-1] && isBracket == true){
-          keyVal += '}';
-          isBracket = false;
-        }
-        if(data[i] == ';' || data[i] == data[data.length-1]){
-          isValue = false;
-          keyValTab.push('"'+keyVal);
-          keyVal = '';
-          isValue = true;
-        }
-        // console.log(keyVal);
-        let tmpChar = parseInt(data[i+1]);
-        tmpChar = tmpChar.toString();
-        if(data[i] == ":" && tmpChar == 'NaN'){ 
-          keyVal += '{"';
-          isBracket = true;
-        }
-        // console.log(keyVal);
-      }
+        const parsers = require("./parsers");
+        const result = parsers.parse(data);
+        
+        res.status(200);
+        res.json(result);
+      });
       
-      console.log(keyValTab);
-      res.json(JSON.parse(`{${keyValTab}}`));
-      res.status(200);
     });
-    
-  });
+  
 });
 
 app.get('/login', (req,res)=>{
-  let login = 'login';
-  let password = 'password';
+  const loginData = require('./consts');
 
-  if(req.body.login != login || req.body.password != password){
+  if(req.body.login != loginData.LOGIN || req.body.password != loginData.PASSWORD){
     res.status(401);
     res.send('Błąd, podane dane są niepoprawne!');
   }else{
-    let token = jwt.sign({secret: 'testSecret', 'login': login},'secret');
+    let token = jwt.sign({secret: loginData.PRIVATE_KEY, 'login': loginData.LOGIN},'secret');
     res.json(token);
   }
 });
@@ -134,8 +100,17 @@ app.get('/profile', (req,res) =>{
   let correctJson = {"login":"test"};
 
    if(JSON.stringify(decoded) == JSON.stringify(correctJson)){
-    res.json(correctJson);
+    res.json(decoded);
    }else{
-     res.send(401);
+    res.status(401).send('Status 401 - Unauthorized!');
    }
+  // jwt.verify(token, consts.PRIVATE_KEY, function (err, decoded) {
+  //   if (err) {
+  //     res.status(401);
+  //     res.send("Invalid token");
+  //   } else {
+  //     res.status(200);
+  //     res.json({ login: decoded.login });
+  //   }
+  // });
 });
