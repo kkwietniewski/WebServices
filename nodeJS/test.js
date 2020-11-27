@@ -110,24 +110,60 @@ test("Parse endpoint positive test", async() =>{
 
 test("Login endpoint positive test", async() =>{
     const loginData = require('./consts');
-    const data = JSON.stringify({"login":loginData.LOGIN,"password":loginData.PASSWORD});
-    const response = await axios.get(PATHS.LOGIN, {
+    const data = {"login":loginData.LOGIN,"password":loginData.PASSWORD};
+    const response = await axios.get(PATHS.LOGIN, 
+        {
         headers: {
-            "Content-Type": "application/json",
-          }, 
-        data: data
-    });
-    console.log(response.data);
+          'Content-Type': 'application/json',
+        },
+        params: {
+            login: loginData.LOGIN,
+            password: loginData.PASSWORD,
+        }
+      })
     expect(response.status).toEqual(200);
     expect(response.data).not.toEqual(null);
-    // try {
-    //     await axios.get(PATHS.LOGIN, {
-    //             headers: {
-    //                 "Content-Type": "application/json",
-    //               }, 
-    //             data: data
-    //         });
-    // } catch ({response}) {
-    //     console.log(response);
-    // }
+});
+
+test("Profile endpoint positive test", async() =>{
+    const loginData = require('./consts');
+    const jwt = require('jsonwebtoken');
+
+    let token = jwt.sign({'login': loginData.LOGIN},loginData.PRIVATE_KEY);
+    const response = await axios.get(PATHS.PROFILE, {
+            headers: {
+                'Authorization': 'Bearer '+token
+            },
+        });
+
+    expect(response.status).toEqual(200);
+    expect(response.data).toEqual({
+        login: "test"
+    });
+
+});
+
+test("Profile endpoint negative test - missing token", async() =>{
+    try {
+        await axios.get(PATHS.PROFILE);
+    } catch ({response}) {
+        expect(response.status).toEqual(500);
+        expect(response.data).toEqual('Token is missing!');
+    }
+    
+
+});
+
+test("Profile endpoint negative test - invalid token", async() =>{
+    try {
+        await axios.get(PATHS.PROFILE, {
+            headers: {
+                'Authorization': 'Bearer '+123
+            },
+        });
+    } catch ({response}) {
+        expect(response.status).toEqual(401);
+        expect(response.data).toEqual('Invalid token');
+    }
+    
 });

@@ -82,35 +82,32 @@ app.post('/parse', (req,res)=>{
 app.get('/login', (req,res)=>{
   const loginData = require('./consts');
 
-  if(req.body.login != loginData.LOGIN || req.body.password != loginData.PASSWORD){
+  if(req.query.login != loginData.LOGIN || req.query.password != loginData.PASSWORD){
     res.status(401);
     res.send('Błąd, podane dane są niepoprawne!');
   }else{
-    let token = jwt.sign({secret: loginData.PRIVATE_KEY, 'login': loginData.LOGIN},'secret');
+    let token = jwt.sign({'login': loginData.LOGIN},loginData.PRIVATE_KEY);
     res.json(token);
   }
 });
 
 app.get('/profile', (req,res) =>{
-  //Token : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InRlc3QifQ.nxl8hJZzl6cYUXx_3G38_q3ZHxxLPGlZ3sIPDpJxSO0, secret
-
-  let token = req.headers.authorization;
-  token = token.replace('Bearer ', '');
-  let decoded = jwt.decode(token);
-  let correctJson = {"login":"test"};
-
-   if(JSON.stringify(decoded) == JSON.stringify(correctJson)){
-    res.json(decoded);
-   }else{
-    res.status(401).send('Status 401 - Unauthorized!');
-   }
-  // jwt.verify(token, consts.PRIVATE_KEY, function (err, decoded) {
-  //   if (err) {
-  //     res.status(401);
-  //     res.send("Invalid token");
-  //   } else {
-  //     res.status(200);
-  //     res.json({ login: decoded.login });
-  //   }
-  // });
+  //Token : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6InRlc3QifQ.9IK78dv0QS2-ooKuajMhCZHi-wYjJPCAGbgrtn_uV9U
+  const loginData = require('./consts');
+  if(req.headers.authorization == null){
+    res.status(500);
+    res.send('Token is missing!');
+  }else{
+    let token = req.headers.authorization;
+    token = token.replace('Bearer ', '');
+    jwt.verify(token, loginData.PRIVATE_KEY, function (err, decoded) {
+      if (err) {
+        res.status(401);
+        res.send("Invalid token");
+      } else {
+        res.status(200);
+        res.json({ login: decoded.login });
+      }
+    });
+  }
 });
